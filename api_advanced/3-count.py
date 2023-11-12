@@ -1,36 +1,31 @@
 #!/usr/bin/python3
-"""fetches the title of all hot posts for a given subreddit recursively"""
-
+"""recursive function that queries the Reddit API,
+parses the title of all hot articles,
+and prints a sorted count of given keywords
+(case-insensitive, delimited by spaces)"""
 import requests
 
 
-def count_words(subreddit, word_list=[], hot_list=[], after=""):
-    """Main function"""
-    URL = "https://www.reddit.com/r/{}/hot.json".format(subreddit)
+def count_words(subreddit, word_list):
+    """
+    1-main
+    """
+    url = "https://www.reddit.com/r/{}/hot.json".format(subreddit)
+    headers = {'User-Agent': 'cynt user agent 1.1'}
+    response = requests.get(url, headers=headers, allow_redirects=False)
+    if response.status_code != 200:
 
-    HEADERS = {"User-Agent": "PostmanRuntime/7.35.0"}
-    PARAMS = {"after": after, "limit": 100}
-    try:
-        RESPONSE = requests.get(URL, headers=HEADERS, params=PARAMS,
-                                allow_redirects=False)
-        after = RESPONSE.json().get("data").get("after")
-        HOT_POSTS = RESPONSE.json().get("data").get("children")
-        [hot_list.append(post.get('data').get('title')) for post in HOT_POSTS]
-        if after is not None:
-            return count_words(subreddit, word_list, hot_list, after)
-
-        new_dict = {}
-        word_list = set([wrd.lower() for wrd in word_list])
-        for title in hot_list:
-            for word in title.split():
-                if word.lower() in new_dict:
-                    new_dict[word.lower()] += 1
-                else:
-                    new_dict.update({word.lower(): 1})
-
-        sorted_dict = sorted(new_dict.items(), key=lambda x: (-x[1], x[0]))
-        for key, value in sorted_dict:
-            if (key in word_list) and (value > 0):
-                print("{}: {}".format(key, value))
-    except Exception:
         return None
+    posts = response.json().get('data').get('children')
+    word_count = {}
+    for post in posts:
+        title = post['data']['title']
+        for word in word_list:
+            if word.lower() in title.lower():
+                word_count[word.lower()] = word_count.get(word.lower(), 0) + 1
+
+    if not word_count:
+        return
+    for key, value in sorted(word_count.items(), key=lambda x: (-x[1], x[0])):
+        print("{}: {}".format(key.lower(), value))
+    return count_words(subreddit, word_list)
